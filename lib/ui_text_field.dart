@@ -61,69 +61,44 @@ enum KeyboardType {
 class UiTextField extends StatefulWidget {
   const UiTextField({
     Key? key,
-    this.controller,
-    this.placeholder,
-    this.textContentType,
-    this.keyboardType = KeyboardType.defaultType,
-    this.obsecureText = false,
-    this.onChanged,
-    this.onSubmitted,
-    this.focusNode,
-    this.textAlign = TextAlign.start,
+    required this.focusNode,
+    required this.onChanged,
+    required this.onSubmitted,
   }) : super(key: key);
-  final TextEditingController? controller;
-  final String? placeholder;
-  final TextContentType? textContentType;
-  final KeyboardType? keyboardType;
-  final bool? obsecureText;
-  final ValueChanged<String>? onChanged;
-  final ValueChanged<String>? onSubmitted;
-  final FocusNode? focusNode;
-  final TextAlign? textAlign;
+
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
+  final FocusNode focusNode;
 
   @override
   UiTextFieldState createState() => UiTextFieldState();
 }
 
 class UiTextFieldState extends State<UiTextField> {
-  MethodChannel? _channel;
-
-  TextEditingController? _controller;
-  TextEditingController get _effectiveController => widget.controller ?? (_controller ??= TextEditingController());
-
-  FocusNode? _focusNode;
-  FocusNode get _effectiveFocusNode => widget.focusNode ?? (_focusNode ??= FocusNode());
+  late MethodChannel _channel;
+  TextEditingController get _effectiveController =>  TextEditingController();
+  FocusNode get _effectiveFocusNode => widget.focusNode;
 
   @override void initState() {
     super.initState();
 
-    if (widget.focusNode != null) {
-      widget.focusNode!.addListener(() {
-        if (widget.focusNode!.hasFocus) {
-          _channel!.invokeMethod("focus");
-        }
-      });
-    }
-
-    if (widget.controller != null) {
-      widget.controller!.addListener(() {
-        _channel!.invokeMethod("setText", { "text": widget.controller!.text });
-      });
-    }
+    widget.focusNode.addListener(() {
+      if (!widget.focusNode.hasFocus) {
+        _channel.invokeMethod("focus");
+      }
+    });
   }
 
   void setFocus(){
-    _channel!.invokeMethod("focus");
+    _channel.invokeMethod("focus");
   }
 
   void setEmpty(){
-    _channel!.invokeMethod("setText", {"text" : ""});
+    _channel.invokeMethod("setText", {"text" : ""});
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
-    _focusNode?.dispose();
     super.dispose();
   }
 
@@ -147,50 +122,48 @@ class UiTextFieldState extends State<UiTextField> {
   void _createMethodChannel(int nativeViewId) {
     _channel = MethodChannel("dev.gilder.tom/uitextfield_$nativeViewId")
       ..setMethodCallHandler(_onMethodCall);
+    _channel.invokeMethod("focus");
   }
 
   Map<String, dynamic> _buildCreationParams() {
     return {
       "text": _effectiveController.text,
-      "placeholder": widget.placeholder ?? "",
-      "textContentType": widget.textContentType?.toString(),
-      "keyboardType": widget.keyboardType?.toString(),
-      "obsecureText": widget.obsecureText,
-      "textAlign": widget.textAlign.toString()
+      "placeholder": "PlaceHolder",
+      "textContentType": TextContentType.telephoneNumber.toString(),
+      "keyboardType": KeyboardType.defaultType.toString(),
+      "obsecureText": false,
+      "textAlign": TextAlign.start.toString()
     };
   }
 
-  Future<bool?> _onMethodCall(MethodCall call) async {
+  Future<bool> _onMethodCall(MethodCall call) async {
     switch (call.method) {
       case "onChanged":
         final String text = call.arguments["text"];
         _onTextFieldChanged(text);
-        return null;
+        return false;
 
       case "textFieldDidBeginEditing":
         _textFieldDidBeginEditing();
-        return null;
+        return false;
 
       case "textFieldDidEndEditing":
-        return null;
+        return false;
       case "onSubmitted":
         final String text = call.arguments["text"];
         _textFieldSubmitted(text);
+        return false;
     }
 
     throw MissingPluginException("UiTextField._onMethodCall: No handler for ${call.method}");
   }
 
-  void _onTextFieldChanged(String? text) {
-    if (text != null && widget.onChanged != null) {
-      widget.onChanged!(text);
-    }
+  void _onTextFieldChanged(String text) {
+    widget.onChanged(text);
   }
 
   void _textFieldSubmitted(String text){
-    if(widget.onSubmitted != null){
-      widget.onSubmitted!(text);
-    }
+    widget.onSubmitted(text);
   }
 
   // UITextFieldDelegate methods
@@ -201,8 +174,6 @@ class UiTextFieldState extends State<UiTextField> {
 
   /// Editing stopped for the specified text field.
   void _textFieldDidEndEditing(String text) {
-    if (widget.onSubmitted != null) {
-      widget.onSubmitted!(text);
-    }
+    widget.onSubmitted(text);
   }
 }
