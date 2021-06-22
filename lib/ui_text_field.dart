@@ -107,7 +107,7 @@ class UiTextFieldState extends State<UiTextField> {
 
     if (widget.controller != null) {
       widget.controller!.addListener(() {
-        _channel!.invokeMethod("setText", { "text": widget.controller!.text ?? "" });
+        _channel!.invokeMethod("setText", { "text": widget.controller!.text });
       });
     }
   }
@@ -151,7 +151,7 @@ class UiTextFieldState extends State<UiTextField> {
 
   Map<String, dynamic> _buildCreationParams() {
     return {
-      "text": _effectiveController.text ?? "",
+      "text": _effectiveController.text,
       "placeholder": widget.placeholder ?? "",
       "textContentType": widget.textContentType?.toString(),
       "keyboardType": widget.keyboardType?.toString(),
@@ -172,8 +172,6 @@ class UiTextFieldState extends State<UiTextField> {
         return null;
 
       case "textFieldDidEndEditing":
-      //final String text = call.arguments["text"];
-      //_textFieldDidEndEditing(text);
         return null;
       case "onSubmitted":
         final String text = call.arguments["text"];
